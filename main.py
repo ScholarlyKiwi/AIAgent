@@ -3,7 +3,6 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import argparse
-from prompt import system_prompt
 
 def main():
     print("Hello from ai-agent-boot-dev!")
@@ -37,11 +36,7 @@ def call_ai_test(client, model, contents, args):
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")
 
-    response = client.models.generate_content(
-        model=model, 
-        contents=contents,
-        config=types.GenerateContentConfig(system_instruction=system_prompt),
-    )
+    response = client.models.generate_content(model=model, contents=contents)
     if response.usage_metadata == None:
         raise RuntimeError("GenAI failed to respond.")
 
