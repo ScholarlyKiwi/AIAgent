@@ -11,3 +11,6 @@ wheels/
 
 #configuration files
 .env
+
+#Non-project files
+playground.py
