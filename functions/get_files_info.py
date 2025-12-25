@@ -1,4 +1,20 @@
 import os
+from google.genai import types
+
+schema_get_files_info = types.FunctionDeclaration(
+    name="get_files_info",
+    description="Lists files in a specified directory relative to the working directory, providing file size and directory status",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        required=["directory"],
+        properties={
+            "directory": types.Schema(
+                type=types.Type.STRING,
+                description="Directory path to list files from, relative to the working directory (default is the working directory itself)",
+            ),
+        },
+    ),
+)
 
 def get_files_info(working_directory, directory="."):
     file_output = f"Result for '{directory}' directory:\n"
@@ -30,4 +46,5 @@ def get_files_info(working_directory, directory="."):
             except Exception as e:
                 file_output += f'Error: unable to process contents: {e}'
 
-    print(file_output + "\n\n")
+    return file_output
+

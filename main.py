@@ -3,6 +3,9 @@ from dotenv import load_dotenv
 from google import genai
 from google.genai import types
 import argparse
+from prompts import system_prompt
+from call_function import *
+import pprint
 
 def main():
     print("Hello from ai-agent-boot-dev!")
@@ -11,10 +14,11 @@ def main():
 
     args = get_args()
 
-    messages = [types.Content(role="user", parts=[types.Part(text=args.user_prompt)])]
+    messages = args.user_prompt
 
     model = "gemini-2.5-flash"
-    call_ai_test(client, model, messages, args)
+
+    ai_results = call_generate_content(client, model, messages, args)
 
 def get_args():
     parser = argparse.ArgumentParser(description="Chatbot")
@@ -31,20 +35,79 @@ def load_ai_api():
     client = genai.Client(api_key=api_key)
     return client
 
-def call_ai_test(client, model, contents, args):
+def call_generate_content(client, model, messages, args):
 
     if args.verbose:
         print(f"User prompt: {args.user_prompt}")
 
-    response = client.models.generate_content(model=model, contents=contents)
-    if response.usage_metadata == None:
-        raise RuntimeError("GenAI failed to respond.")
+    try:
 
-    if args.verbose:
-        print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
-        print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+        contents = [types.Content(role="user", parts=[types.Part(text=messages)])]
 
-    print(f"{response.text}")
+        while_counter = 0
+
+        while while_counter <= 20:
+            while_counter += 1
+
+            response = client.models.generate_content(
+                model=model, 
+                contents=contents,
+                config=types.GenerateContentConfig(
+                    system_instruction=system_prompt,
+                    tools=[available_functions]),
+            )
+
+            if response.usage_metadata == None:
+                raise RuntimeError("GenAI failed to respond.")
+
+            if args.verbose:
+                print(f"Prompt tokens: {response.usage_metadata.prompt_token_count}")
+                print(f"Response tokens: {response.usage_metadata.candidates_token_count}")
+           
+            if not response.candidates == None:
+                for candidate in response.candidates:
+                    content = candidate.content
+                    contents.append(content)
+
+            if not response.function_calls:
+                return response.text
+
+            if response.function_calls != None:
+
+                returned_function_results = list()
+
+                if args.verbose:
+                    print(f"function results = {response.function_calls}\n")
+
+                for function_call in response.function_calls:
+                    if args.verbose:
+                        print(f"Calling function: {function_call.name}({function_call.args})\n")
+
+                    function_call_result = call_function( function_call, args.verbose)
+                    
+                    if len(function_call_result.parts) == 0:
+                        raise Exception(f"Error: no results from function call {function_call.name}({function_call.args})")
+
+                    function_response = function_call_result.parts[0].function_response
+                    if function_response == None:
+                        raise Exception(f"Error: emtpy function response from function call {function_call.name}({function_call.args})")
+                    if function_response.response == None:
+                        raise Exception(f"Error: empty response from function call {function_call.name}({function_call.args})")
+                    
+                    if args.verbose:
+                        print(f"-> {function_call_result.parts[0].function_response.response}\n")
+
+                    returned_function_results.append(dict(function_call_result.parts[0]))
+
+                results_content = types.Content(parts=returned_function_results, role='user')
+                contents.append(results_content)
+
+        return results_content
+    except Exception as e:
+            print(f"Error: calling AI {e}")
+
+     
+
 
 if __name__ == "__main__":
     main()

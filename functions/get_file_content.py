@@ -1,6 +1,23 @@
 import os
 from config import MAX_CHARS
 
+from google.genai import types
+
+schema_get_files_content = types.FunctionDeclaration(
+    name="get_file_content",
+    description="Returns the text with a specific file, truncated at the configured max characters.",
+    parameters=types.Schema(
+        type=types.Type.OBJECT,
+        required=["file_path"],
+        properties={
+            "file_path": types.Schema(
+                type=types.Type.STRING,
+                description="File path to the file whoose text will be returned. The file path is relative to the working directory (required)",
+            ),
+        },
+    ),
+)
+
 def get_file_content(working_directory, file_path):
 
     try:
